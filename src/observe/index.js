@@ -1,7 +1,13 @@
+import { newArrayProto } from "./array";
+
 /**通过 Object.defineProperty来劫持数据 */
 export function observe(data){
   //只能对对象进行劫持，所以要先进行判断
   if(typeof data !== 'object' || data === null){
+    return;
+  }
+  //如果data 上有 __ob__ 并且是 Observer 时说明，这个对象已经被观测过了
+  if(data.__ob__ instanceof Observer){
     return;
   }
 
@@ -14,7 +20,25 @@ export function observe(data){
 class Observer{
   constructor(data){
     //Object.defineProperty只能劫持已经存在的属性（vue里面会为添加，删除属性的方法添加一些api，如$set,$delete）
-    this.walk(data);
+    
+    //将当前实例赋值给__ob__属性保存下来，方便在其他的地方调用实例的方法
+    //并且添加这个标识之后就可以知道这个数据已经被观察过了，不用在进行观察
+    // data.__ob__ = this;
+    //不过直接这样添加的话，在调用 this.walk(data) 的时候会形成死循环，可以这样解决
+    Object.defineProperty(data,"__ob__",{
+      value:this,
+      enumerable:false,//不可枚举，循环时就获取不了
+    })
+
+    if(Array.isArray(data)){
+      //当值为数组的也是可以对其进行劫持的，但是数组长度很长的时候就会非常消耗性能
+      //而且一般也不会通过索引来访问很设置值，所以vue中并不会劫持数组，而是重构数组的方法来实现响应式数据
+      data.__proto__ = newArrayProto;
+      //如果数组中的某个元素是对象的时候也是需要对其进行劫持的
+      this.observeArray(data);
+    }else{
+      this.walk(data);
+    }
   }
   walk(data){
     //循环对象，对每个数据都进行劫持
@@ -22,6 +46,9 @@ class Observer{
     Object.keys(data).forEach(key => {
       defineReactive(data,key,data[key]);
     })
+  }
+  observeArray(data){
+    data.forEach(item => observe(item));
   }
 }
 
@@ -38,6 +65,8 @@ export function defineReactive(target,key,value){
     set(newVal){
       //设置值时
       if(newVal === value) return;
+      //如果设置的值是一个对象时，需要继续对这个对象进行劫持
+      observe(newVal);
       value = newVal;
     }
   })
