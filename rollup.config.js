@@ -1,4 +1,5 @@
 import babel from "rollup-plugin-babel";
+import nodeResolve from "@rollup/plugin-node-resolve";
 
 // rollup 可以导出一个对象，作为打包的配置文件
 export default {
@@ -13,6 +14,8 @@ export default {
     //使用 babel 将高级语法转化成低级语法
     babel({
       exclude:'node_modules/**',//排除 node_modules
-    })
+    }),
+    //采用node模块导入的规范，不用写全路径
+    nodeResolve(),
   ]
 }

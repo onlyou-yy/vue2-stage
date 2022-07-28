@@ -1,4 +1,4 @@
-import { observe } from "./observe/index.js";
+import { observe } from "./observe";
 
 /**初始化状态 */
 export function initState(vm){
