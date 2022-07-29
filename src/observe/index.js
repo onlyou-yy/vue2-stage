@@ -1,4 +1,5 @@
 import { newArrayProto } from "./array";
+import Dep from "./dep";
 
 /**通过 Object.defineProperty来劫持数据 */
 export function observe(data){
@@ -56,10 +57,15 @@ class Observer{
 export function defineReactive(target,key,value){
   //如果值是对象，那么还需要继续对数据进行劫持
   observe(value);
+  //为每个属性创建一个dep,闭包中不会被销毁
+  let dep = new Dep();
   //这里用到了 闭包 来保存 value 值。
   Object.defineProperty(target,key,{
     get(){
       //取值时
+      if(Dep.target){//当进行普通的取值使用的时候不需要进行依赖收集
+        dep.depend();//让这个属性的收集器记住当前的watcher
+      }
       return value;
     },
     set(newVal){
@@ -68,6 +74,7 @@ export function defineReactive(target,key,value){
       //如果设置的值是一个对象时，需要继续对这个对象进行劫持
       observe(newVal);
       value = newVal;
+      dep.notify();//设置值的时候通知watcher更新渲染
     }
   })
 }

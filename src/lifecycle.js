@@ -1,3 +1,4 @@
+import Watcher from "./observe/watcher";
 import { createElementVNode, createTextVNode } from "./vdom"
 
 /**创建真实DOM */
@@ -87,7 +88,12 @@ export function mountComponent(vm,el){
   // 将节点挂载到实例上，方便之后访问
   vm.$el = el;
   // 1.调用render方法产生虚拟节点，虚拟DOM
-  vm._update(vm._render());
+  const updateComponent = () => {
+    vm._update(vm._render());
+  }
+
+  new Watcher(vm,updateComponent);
+  
 
   // 2.根据虚拟DOM产生真实DOM
 
