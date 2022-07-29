@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+</head>
+<body>
+  <script src="./vue.js"></script>
+  <script>
+    var vm = new Vue({
+      data:{
+        name:'jack',
+        address:{
+          num:30,
+          content:"回龙观",
+        },
+        hobby:['eat','drink']
+      }
+    });
+    vm.name = "ok";//触发set方法
+    vm.address = {num:20,content:"sfdsdf"};//触发set方法，当赋值为一个对象的时候会将这个对象进行劫持
+    //当值为数组的也是可以对其进行劫持的，但是数组长度很长的时候就会非常消耗性能
+    //而且一般也不会通过索引来访问很设置值，所以vue中并不会劫持数组，而是重构数组的方法来实现响应式数据
+    vm.hobby[200] = "dance";//一般情况下时不会使用这个中方法来访问的
+  </script>
+</body>
+</html>

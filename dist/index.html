@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+</head>
+<body>
+  <div id="app" style="background-color:yellow;">
+    sidgnsgssfsdfd
+    <div style="color:red">{{name}} asdfsafd {{age}}</div>
+    <div>{{age}}</div>
+  </div>
+  <script src="./vue.js"></script>
+  <script>
+    var vm = new Vue({
+      el:"#app",//我们将数据解析到el元素上
+      data:{
+        name:'jack',
+        age:'4444',
+        address:{
+          num:30,
+          content:"回龙观",
+        },
+        hobby:['eat','drink']
+      }
+    });
+    setTimeout(() => {
+      // 因为目前还没有做异步更新的操作
+      // 所以这样做的话是会执行4次dep.notify的
+      vm.name = "rocy";
+      vm.name = "rocyx x x";
+      vm.age = "18";
+      vm.age = "20";
+      //可以利用事件环的方式实现异步更新，先执行完同步代码再执行异步代码
+      //异步代码部分可以使用 promise
+    }, 1000);
+  </script>
+</body>
+</html>
