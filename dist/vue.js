@@ -862,8 +862,10 @@
         //这里唯一可以拿到的关联数据就是this，但是我们需要调用 Observer 中的 observeArray 来观察新数据
         //而在创建 Observer 的时候又将 实例挂载到了 __ob__ 上，所以
         ob.observeArray(inserted);
-      }
+      } //数组变化了，通知对应的watcher实现更新
 
+
+      ob.dep.notify();
       return result;
     };
   });
@@ -891,11 +893,13 @@
     function Observer(data) {
       _classCallCheck(this, Observer);
 
-      //Object.defineProperty只能劫持已经存在的属性（vue里面会为添加，删除属性的方法添加一些api，如$set,$delete）
+      //给每个对象都增加收集功能
+      this.dep = new Dep(); //Object.defineProperty只能劫持已经存在的属性（vue里面会为添加，删除属性的方法添加一些api，如$set,$delete）
       //将当前实例赋值给__ob__属性保存下来，方便在其他的地方调用实例的方法
       //并且添加这个标识之后就可以知道这个数据已经被观察过了，不用在进行观察
       // data.__ob__ = this;
       //不过直接这样添加的话，在调用 this.walk(data) 的时候会形成死循环，可以这样解决
+
       Object.defineProperty(data, "__ob__", {
         value: this,
         enumerable: false //不可枚举，循环时就获取不了
@@ -938,7 +942,8 @@
 
   function defineReactive(target, key, value) {
     //如果值是对象，那么还需要继续对数据进行劫持
-    observe(value); //为每个属性创建一个dep,闭包中不会被销毁
+    var childOb = observe(value); //childOb.dep 用来收集依赖
+    //为每个属性创建一个dep,闭包中不会被销毁
 
     var dep = new Dep(); //这里用到了 闭包 来保存 value 值。
 
@@ -948,6 +953,16 @@
         if (Dep.target) {
           //当进行普通的取值使用的时候不需要进行依赖收集
           dep.depend(); //让这个属性的收集器记住当前的watcher
+
+          if (childOb) {
+            //让数组和对象本身也实现依赖收集
+            childOb.dep.depend(); //如果值是一个数组的话，还需要对里面的值进行依赖收集
+            //解决多维数组的问题
+
+            if (Array.isArray(value)) {
+              dependArray(value);
+            }
+          }
         }
 
         return value;
@@ -961,6 +976,18 @@
         dep.notify(); //设置值的时候通知watcher更新渲染
       }
     });
+  }
+  /**收集数组数据的依赖 */
+
+  function dependArray(value) {
+    for (var i = 0; i < value.length; i++) {
+      var current = value[i];
+      current.__ob__ && current.__ob__.dep.depend();
+
+      if (Array.isArray(current)) {
+        dependArray(current);
+      }
+    }
   }
 
   /**初始化状态 */

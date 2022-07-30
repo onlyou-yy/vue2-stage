@@ -8,32 +8,32 @@
 </head>
 <body>
   <div id="app" style="background-color:yellow;">
-    sidgnsgssfsdfd
-    <div style="color:red">{{name}} asdfsafd {{age}}</div>
-    <div>{{age}}</div>
+    {{arr}}
   </div>
   <script src="./vue.js"></script>
   <script>
-    //在vue中有一些公共的方法和属性可以抽离出来
-    //然后可以使用mixin来混入到组件实例中（但是这样做数据来源会不明确）
-    Vue.mixin({
-      created:function(){
-        console.log("created");
-      }
-    })
-    console.log(Vue.options);
     var vm = new Vue({
-      el:"#app",//我们将数据解析到el元素上
+      el:"#app",
       data:{
-        name:'jack',
-        age:'4444',
-        address:{
-          num:30,
-          content:"回龙观",
-        },
-        hobby:['eat','drink']
+        arr:['eat','drink'],
+        obj:{val:"jack"}
       }
     });
+
+    //在vue2中直接通过索引来修改数组，页面是不会更新的
+    //修改数组的属性也是不会被监控更新的，因为Vue2中对于数组数据的方法进行了重构
+    //所以只有通过重构的方法来修改数组数据页面才会做出响应
+    vm.arr[0] = 'sss';
+    vm.arr.length = 100;
+
+    //目前仅仅只是对data中的每个属性进行了观察
+    //每个属性都对应了一个dep，在访问和设置的时候都会被劫持，触发更新渲染
+    //但是对于值是数组情况下，通过索引修改值是不会被劫持的,也就不能触发页面更新
+    //同样对于值是对象的情况下，给对象新增属性也是不会被劫持的
+    
+    //解决
+    //可以给对象也增加dep,如果后续用户增添了属性就可以触发dep更新
+    //给数组本身增加dep,如果增加了一项也可以出发dep更新
   </script>
 </body>
 </html>

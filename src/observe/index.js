@@ -20,6 +20,10 @@ export function observe(data){
 /**观察者（被劫持对象） */
 class Observer{
   constructor(data){
+
+    //给每个对象都增加收集功能
+    this.dep = new Dep();
+
     //Object.defineProperty只能劫持已经存在的属性（vue里面会为添加，删除属性的方法添加一些api，如$set,$delete）
     
     //将当前实例赋值给__ob__属性保存下来，方便在其他的地方调用实例的方法
@@ -56,7 +60,7 @@ class Observer{
 /**重新定义属性 */
 export function defineReactive(target,key,value){
   //如果值是对象，那么还需要继续对数据进行劫持
-  observe(value);
+  let childOb = observe(value);//childOb.dep 用来收集依赖
   //为每个属性创建一个dep,闭包中不会被销毁
   let dep = new Dep();
   //这里用到了 闭包 来保存 value 值。
@@ -65,6 +69,15 @@ export function defineReactive(target,key,value){
       //取值时
       if(Dep.target){//当进行普通的取值使用的时候不需要进行依赖收集
         dep.depend();//让这个属性的收集器记住当前的watcher
+        if(childOb){
+          //让数组和对象本身也实现依赖收集
+          childOb.dep.depend();
+          //如果值是一个数组的话，还需要对里面的值进行依赖收集
+          //解决多维数组的问题
+          if(Array.isArray(value)){
+            dependArray(value);
+          }
+        }
       }
       return value;
     },
@@ -77,4 +90,15 @@ export function defineReactive(target,key,value){
       dep.notify();//设置值的时候通知watcher更新渲染
     }
   })
+}
+
+/**收集数组数据的依赖 */
+function dependArray(value){
+  for(let i = 0;i < value.length;i++){
+    let current = value[i];
+    current.__ob__ && current.__ob__.dep.depend();
+    if(Array.isArray(current)){
+      dependArray(current);
+    }
+  }
 }

@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+</head>
+<body>
+  <div id="app" style="background-color:yellow;">
+    sidgnsgssfsdfd
+    <div style="color:red">{{name}} asdfsafd {{age}}</div>
+    <div>{{age}}</div>
+  </div>
+  <script src="./vue.js"></script>
+  <script>
+    //在vue中有一些公共的方法和属性可以抽离出来
+    //然后可以使用mixin来混入到组件实例中（但是这样做数据来源会不明确）
+    Vue.mixin({
+      created:function(){
+        console.log("created");
+      }
+    })
+    console.log(Vue.options);
+    var vm = new Vue({
+      el:"#app",//我们将数据解析到el元素上
+      data:{
+        name:'jack',
+        age:'4444',
+        address:{
+          num:30,
+          content:"回龙观",
+        },
+        hobby:['eat','drink']
+      }
+    });
+  </script>
+</body>
+</html>

@@ -40,6 +40,10 @@ methods.forEach(item => {
       //而在创建 Observer 的时候又将 实例挂载到了 __ob__ 上，所以
       ob.observeArray(inserted);
     }
+
+    //数组变化了，通知对应的watcher实现更新
+    ob.dep.notify();
+    
     return result;
   }
 })
