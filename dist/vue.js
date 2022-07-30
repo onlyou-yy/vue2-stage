@@ -4,6 +4,70 @@
   (global = typeof globalThis !== 'undefined' ? globalThis : global || self, global.Vue = factory());
 })(this, (function () { 'use strict';
 
+  /**合并选项 */
+  function mergeOptions(parent, child) {
+    var options = {}; //定义一个新对象用来存储合并后的对象
+    //先合并父选项
+
+    for (var key in parent) {
+      mergeField(key);
+    } //再用子选项来覆盖和合并父选项
+
+
+    for (var _key in child) {
+      if (!parent.hasOwnProperty(_key)) {
+        mergeField(_key);
+      }
+    }
+
+    function mergeField(key) {
+      //采用策略模式减少 if/else
+      //如果不在策略中优先使用子
+      if (strats[key]) {
+        options[key] = strats[key](parent[key], child[key]);
+      } else {
+        //优先使用子的，再使用父的
+        options[key] = child[key] || parent[key];
+      }
+    }
+
+    return options;
+  } //策略模式
+
+  var strats = {};
+  var LIFECYCLE = ['beforeCreate', 'created', 'beforeMount', 'mounted', 'beforeUpdate', 'updated', 'beforeDestroy', 'destroyed'];
+  LIFECYCLE.forEach(function (hook) {
+    strats[hook] = function (p, c) {
+      // 第一次合并：{} + {created:fn} => {created:[fn]}
+      // 第二次合并：{created:fn1} + {created:fn2} => {created:[fn1,fn2]}
+      if (c) {
+        if (p) {
+          // 父子都有
+          return p.concat(c);
+        } else {
+          // 只有子有,初始化过程
+          return [c];
+        }
+      } else {
+        // 如果子没有，就直接使用父的
+        // 只要经过初始化过程， 父 就已经是个数组
+        // 如 {created:[fn]} + {a:1}
+        return p;
+      }
+    };
+  });
+
+  function initGlobalAPI(Vue) {
+    //Vue静态属性和方法
+    Vue.options = {};
+
+    Vue.mixin = function (mixin) {
+      //将用户选项和全局的options合并
+      this.options = mergeOptions(this.options, mixin);
+      return this;
+    };
+  }
+
   function _typeof(obj) {
     "@babel/helpers - typeof";
 
@@ -744,6 +808,19 @@
    */
   // render 函数会去产生虚拟节点（使用响应式数据）
   // 根据生成的虚拟节点创造正式的DOM
+  // ---------------------------------------------------------------------
+
+  /**调用选项中的生命钩子函数 */
+
+  function callHook(vm, hook) {
+    var handlers = vm.$options[hook];
+
+    if (handlers) {
+      handlers.forEach(function (handler) {
+        return handler.call(vm);
+      });
+    }
+  }
 
   // 重写数组中的部分方法
   var oldArrayProto = Array.prototype; // 先复制一份原型
@@ -934,10 +1011,16 @@
   function initMixin(Vue) {
     Vue.prototype._init = function (options) {
       //将 options 挂载到 实例的 $options 上方便后续方法的访问
-      var vm = this;
-      vm.$options = options; // 初始化状态
+      var vm = this; //合并选项并赋值,定义的全局过滤器，指令等都会挂载上去
+      // this 指向Vue实例，在实例上没有constructor，但是会在原型链上查找
 
-      initState(vm); // 实现数据的挂载
+      vm.$options = mergeOptions(this.constructor.options, options); // 调用生命周期函数
+
+      callHook(vm, "beforeCreate"); // 初始化状态
+
+      initState(vm); // 调用生命周期函数
+
+      callHook(vm, "beforeCreate"); // 实现数据的挂载
 
       if (options.el) {
         vm.$mount(options.el);
@@ -977,8 +1060,6 @@
       // runtime 是不包含模版编译的，整个编译时打包的时候通过loader来进行转义.vue文件的
       // 所以用runtime的时候不能使用template
     };
-
-    Vue.prototype.$nextTick = nextTick;
   }
 
   function Vue(options) {
@@ -987,8 +1068,10 @@
   } // 添加方法
 
 
+  Vue.prototype.$nextTick = nextTick;
   initMixin(Vue);
   initLifeCycle(Vue);
+  initGlobalAPI(Vue);
 
   return Vue;
 
