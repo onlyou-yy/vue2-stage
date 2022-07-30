@@ -17,7 +17,7 @@ export function initMixin(Vue){
     
     // 调用生命周期函数
     callHook(vm,"beforeCreate");
-    // 初始化状态
+    // 初始化状态，计算属性，watch
     initState(vm);
     // 调用生命周期函数
     callHook(vm,"beforeCreate");

@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+</head>
+<body>
+  <div id="app" style="background-color:yellow;">
+    {{arr}}
+  </div>
+  <script src="./vue.js"></script>
+  <script>
+    var vm = new Vue({
+      el:"#app",
+      data:{
+        arr:['eat','drink'],
+        obj:{val:"jack"}
+      }
+    });
+
+    //在vue2中直接通过索引来修改数组，页面是不会更新的
+    //修改数组的属性也是不会被监控更新的，因为Vue2中对于数组数据的方法进行了重构
+    //所以只有通过重构的方法来修改数组数据页面才会做出响应
+    vm.arr.push("sdfsdf");
+    vm.arr.push(['jask']);
+    vm.arr[3].push("fff");
+    //目前仅仅只是对data中的每个属性进行了观察
+    //每个属性都对应了一个dep，在访问和设置的时候都会被劫持，触发更新渲染
+    //但是对于值是数组情况下，通过索引修改值是不会被劫持的,也就不能触发页面更新
+    //同样对于值是对象的情况下，给对象新增属性也是不会被劫持的
+    
+    //解决
+    //可以给对象也增加dep,如果后续用户增添了属性就可以触发dep更新
+    //给数组本身增加dep,如果增加了一项也可以出发dep更新
+  </script>
+</body>
+</html>

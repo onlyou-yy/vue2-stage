@@ -23,4 +23,15 @@ class Dep{
 //取值的时候就会触发数据劫持的 get ，此时就可以将这个watcher进行收集了
 Dep.target = null;
 
+/**watcher栈 */
+let stack = [];
+export function pushTarget(watcher){
+  stack.push(watcher);
+  Dep.target = watcher;
+}
+export function popTarget(watcher){
+  stack.pop();
+  Dep.target = stack[stack.length - 1];
+}
+
 export default Dep;

@@ -3,7 +3,7 @@
  * 这样可以做的局部更新
  */
 
-import Dep from "./dep";
+import Dep, { popTarget, pushTarget } from "./dep";
 
 let id = 0;
 
@@ -39,9 +39,9 @@ class Watcher{
     this.get();
   }
   get(){
-    Dep.target = this;//缓存当前 watcher 实例
+    pushTarget(this);//缓存当前 watcher 实例
     this.getter();//会去vm上取值
-    Dep.target = null;//重新滞空，当进行普通的取值使用的时候不需要进行依赖收集
+    popTarget();//重新出栈
   }
   addDep(dep){
     // 一个组件 watcher 中，可能会使用多个重复的属性，重复的属性不需要记录

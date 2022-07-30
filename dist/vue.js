@@ -479,6 +479,17 @@
 
 
   Dep.target = null;
+  /**watcher栈 */
+
+  var stack = [];
+  function pushTarget(watcher) {
+    stack.push(watcher);
+    Dep.target = watcher;
+  }
+  function popTarget(watcher) {
+    stack.pop();
+    Dep.target = stack[stack.length - 1];
+  }
 
   var id = 0; // dep 和 watcher 就是观察者模式
   // 每个属性有一个 dep（属性就是被观察者），watcher就是观察者（属性变化了会通知观察者更新）
@@ -516,11 +527,11 @@
     _createClass(Watcher, [{
       key: "get",
       value: function get() {
-        Dep.target = this; //缓存当前 watcher 实例
+        pushTarget(this); //缓存当前 watcher 实例
 
         this.getter(); //会去vm上取值
 
-        Dep.target = null; //重新滞空，当进行普通的取值使用的时候不需要进行依赖收集
+        popTarget(); //重新出栈
       }
     }, {
       key: "addDep",
@@ -999,6 +1010,11 @@
       //初始化数据，生成相应式数据
       initData(vm);
     }
+
+    if (opts.computed) {
+      //初始化计算属性
+      initComputed(vm);
+    }
   }
   /**初始化数据，生成相应式数据 */
 
@@ -1029,6 +1045,40 @@
       }
     });
   }
+  /**初始化计算属性 */
+
+
+  function initComputed(vm) {
+    var computed = vm.$options.computed;
+
+    for (var key in computed) {
+      var userDef = computed[key]; //需要一个computed 的 watcher 来维护计算属性，方便实现之后的缓存
+      //需要监控计算属性中的get变化
+
+      var fn = typeof userDef == 'function' ? userDef : userDef.get; //如果直接new Watcher默认就会执行fn,所以需要添加一个{lazy:true}来
+
+      new Watcher(vm, fn, {
+        lazy: true
+      });
+      defineComputed(vm, key, userDef);
+    }
+  }
+  /**为实例挂载上计算属性 */
+
+
+  function defineComputed(target, key, userDef) {
+    //getter可能是一个 function 也可能是对象
+    var getter = typeof userDef == 'function' ? userDef : userDef.get;
+
+    var setter = userDef.set || function () {}; //当调用 render 渲染函数的时候，会访问计算属性
+    //计算属性函数调用的时候也会访问data的属性，从未获取到完整的值
+
+
+    Object.defineProperty(target, key, {
+      get: getter,
+      set: setter
+    });
+  }
 
   /**
    * 初始化函数，就是为Vue添加_init方法
@@ -1043,7 +1093,7 @@
 
       vm.$options = mergeOptions(this.constructor.options, options); // 调用生命周期函数
 
-      callHook(vm, "beforeCreate"); // 初始化状态
+      callHook(vm, "beforeCreate"); // 初始化状态，计算属性，watch
 
       initState(vm); // 调用生命周期函数
 
