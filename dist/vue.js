@@ -519,19 +519,36 @@
       // 所以再这里还需要将dep也记录收集一下
 
       this.deps = [];
-      this.depsId = new Set(); //初始的时候调用一下 getter
+      this.depsId = new Set(); //是否懒加载
 
-      this.get();
-    }
+      this.lazy = options.lazy; //是否是脏
+
+      this.dirty = this.lazy;
+      this.vm = vm; //初始的时候调用一下 getter
+      //如果是懒加载，那么第一次时不用执行的
+
+      this.lazy ? undefined : this.get();
+    } //获取计算属性处理结果(计算属性watcher)
+
 
     _createClass(Watcher, [{
+      key: "evaluate",
+      value: function evaluate() {
+        //执行get方法获取到用户定义的计算属性的getters的返回值
+        this.value = this.get(); //重新定义为脏
+
+        this.dirty = false;
+      }
+    }, {
       key: "get",
       value: function get() {
         pushTarget(this); //缓存当前 watcher 实例
 
-        this.getter(); //会去vm上取值
+        var value = this.getter.call(this.vm); //会去vm上取值
 
         popTarget(); //重新出栈
+
+        return value;
       }
     }, {
       key: "addDep",
@@ -546,14 +563,31 @@
           dep.addSub(this); //dep记录watcher
         }
       }
+      /**让属性收集watcher */
+
+    }, {
+      key: "depend",
+      value: function depend() {
+        var i = this.deps.length;
+
+        while (i--) {
+          // 让计算属性依赖的属性去收集上层的渲染watcher
+          this.deps[i].depend();
+        }
+      }
       /**重新更新 */
 
     }, {
       key: "update",
       value: function update() {
-        // this.get();
-        // 异步更新先将当前 watcher 暂存起来
-        queueWatcher(this);
+        if (this.lazy) {
+          // 计算属性watcher，将标识计算属性是脏值
+          this.dirty = true;
+        } else {
+          // this.get();
+          // 异步更新先将当前 watcher 暂存起来
+          queueWatcher(this);
+        }
       }
     }, {
       key: "run",
@@ -807,7 +841,7 @@
       vm._update(vm._render());
     };
 
-    new Watcher(vm, updateComponent); // 2.根据虚拟DOM产生真实DOM
+    new Watcher(vm, updateComponent, true); // 2.根据虚拟DOM产生真实DOM
     // 3.插入到el元素中
   }
   /**
@@ -1049,15 +1083,18 @@
 
 
   function initComputed(vm) {
-    var computed = vm.$options.computed;
+    var computed = vm.$options.computed; //将计算属性的所有watcher都保存到vm上
+
+    var watchers = vm._computedWatchers = {};
 
     for (var key in computed) {
       var userDef = computed[key]; //需要一个computed 的 watcher 来维护计算属性，方便实现之后的缓存
       //需要监控计算属性中的get变化
 
-      var fn = typeof userDef == 'function' ? userDef : userDef.get; //如果直接new Watcher默认就会执行fn,所以需要添加一个{lazy:true}来
+      var fn = typeof userDef == 'function' ? userDef : userDef.get; //如果直接new Watcher默认就会执行fn,所以需要添加一个{lazy:true}来让他在使用的时候再至执行
+      //将计算属性和wathcer对应起来
 
-      new Watcher(vm, fn, {
+      watchers[key] = new Watcher(vm, fn, {
         lazy: true
       });
       defineComputed(vm, key, userDef);
@@ -1068,16 +1105,52 @@
 
   function defineComputed(target, key, userDef) {
     //getter可能是一个 function 也可能是对象
-    var getter = typeof userDef == 'function' ? userDef : userDef.get;
+    typeof userDef == 'function' ? userDef : userDef.get;
 
     var setter = userDef.set || function () {}; //当调用 render 渲染函数的时候，会访问计算属性
-    //计算属性函数调用的时候也会访问data的属性，从未获取到完整的值
+    //计算属性函数调用的时候也会访问data的属性，从而获取到完整的值
+    //但是不能直接使用watcher，因为需要检查依赖的属性是否发生变化
 
 
     Object.defineProperty(target, key, {
-      get: getter,
+      get: createComputedGetter(key),
       set: setter
     });
+  } //计算属性根本不会收集依赖，只会让自己的依赖属性去收集依赖
+
+  /**创建计算属性getter */
+
+
+  function createComputedGetter(key) {
+    return function () {
+      //当前 this 是指向 vm 的
+      //所以 可以直接从this 上获取到全部的 计算属性watcher
+      var watcher = this._computedWatchers[key];
+
+      if (watcher.dirty) {
+        // 执行用户传入的getter
+        watcher.evaluate();
+      }
+      /**
+       * 在计算属性依赖的属性发生变化的时候触发的是计算属性的watcher更新
+       * 并不会触发 渲染watcher的更新 ，所以页面并不会更新
+       * 所以计算属性依赖的属性也需要去收集 渲染watcher
+       */
+      //当第一次渲染的时候执行了 watcher 中 get 方法
+      //此时 渲染watcher 会被存放到wathcer缓存栈中
+      //在渲染的过程中发现使用到了计算属性，然后 计算属性watcher 被创建，并存放到 watcher 缓存栈中
+      //此时的watcher缓存栈就是 [渲染watcher，计算属性watcher]
+      //之后 计算属性watcher 调用evaluate()取值后出栈，watcher缓存栈就剩下 渲染watcher
+      //所以 watcher缓存栈 栈顶就是渲染watcher （Dep.target）
+      //所以可以让计算属性依赖的属性去收集上层的watcher（渲染watcher）
+
+
+      if (Dep.target) {
+        watcher.depend();
+      }
+
+      return watcher.value;
+    };
   }
 
   /**

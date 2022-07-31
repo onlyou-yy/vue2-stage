@@ -8,7 +8,7 @@
 </head>
 <body>
   <div id="app" style="background-color:yellow;">
-    {{fullName}} {{fullName}} {{fullName}}
+    {{fullName}} / {{fullName}} / {{fullName}}
   </div>
   <script src="./vue.js"></script>
   <script>
@@ -16,13 +16,18 @@
       el:"#app",
       data:{
         firstName:'hello',
-        secondName:'world'
+        secondName:'world',
+        age:12,
       },
+      //计算属性底层就是一个带有dirty属性的watcher
       computed:{
+        newAge(){
+          return this.age + 5;
+        },
         fullName:{
           get(){
             console.log('run')
-            return this.firstName + this.secondName;
+            return this.firstName + this.secondName + this.newAge;
           },
           set(newVal){
             console.log(newVal);
@@ -31,7 +36,8 @@
       }
     });
     setTimeout(()=>{
-      vm.firstName = "jack";
+      // 值变化了，需要将依赖这个属性的计算属性，watcher设置为脏值
+      vm.age = 22;
     },1000)
     //计算属性
     //依赖的值发生变化才会重新执行用户的方法 计算属性中要维护一个dirty属性，默认计算属性不会立刻执行

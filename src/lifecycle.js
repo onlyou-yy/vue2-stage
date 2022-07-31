@@ -92,7 +92,7 @@ export function mountComponent(vm,el){
     vm._update(vm._render());
   }
 
-  new Watcher(vm,updateComponent);
+  new Watcher(vm,updateComponent,true);
   
 
   // 2.根据虚拟DOM产生真实DOM

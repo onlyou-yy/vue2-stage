@@ -35,13 +35,30 @@ class Watcher{
     // 所以再这里还需要将dep也记录收集一下
     this.deps = [];
     this.depsId = new Set();
+
+    //是否懒加载
+    this.lazy = options.lazy;
+    //是否是脏
+    this.dirty = this.lazy;
+
+    this.vm = vm;
+
     //初始的时候调用一下 getter
-    this.get();
+    //如果是懒加载，那么第一次时不用执行的
+    this.lazy ? undefined :this.get();
+  }
+  //获取计算属性处理结果(计算属性watcher)
+  evaluate(){
+    //执行get方法获取到用户定义的计算属性的getters的返回值
+    this.value = this.get();
+    //重新定义为脏
+    this.dirty = false;
   }
   get(){
     pushTarget(this);//缓存当前 watcher 实例
-    this.getter();//会去vm上取值
+    let value = this.getter.call(this.vm);//会去vm上取值
     popTarget();//重新出栈
+    return value
   }
   addDep(dep){
     // 一个组件 watcher 中，可能会使用多个重复的属性，重复的属性不需要记录
@@ -52,11 +69,24 @@ class Watcher{
       dep.addSub(this);//dep记录watcher
     }
   }
+  /**让属性收集watcher */
+  depend(){
+    let i = this.deps.length;
+    while(i--){
+      // 让计算属性依赖的属性去收集上层的渲染watcher
+      this.deps[i].depend();
+    }
+  }
   /**重新更新 */
   update(){
-    // this.get();
-    // 异步更新先将当前 watcher 暂存起来
-    queueWatcher(this);
+    if(this.lazy){
+      // 计算属性watcher，将标识计算属性是脏值
+      this.dirty = true;
+    }else{
+      // this.get();
+      // 异步更新先将当前 watcher 暂存起来
+      queueWatcher(this);
+    }
   }
   run(){
     this.get();
