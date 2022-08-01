@@ -14,4 +14,9 @@ initMixin(Vue);
 initLifeCycle(Vue);
 initGlobalAPI(Vue);
 
+//最终调用的都是这个方法
+Vue.prototype.$watch = function(exprOrFn,cb,options = {}){
+  
+}
+
 export default Vue;

@@ -19,30 +19,27 @@
         secondName:'world',
         age:12,
       },
-      //计算属性底层就是一个带有dirty属性的watcher
-      computed:{
-        newAge(){
-          return this.age + 5;
-        },
-        fullName:{
-          get(){
-            console.log('run')
-            return this.firstName + this.secondName + this.newAge;
-          },
-          set(newVal){
-            console.log(newVal);
-          }
+      methods:{
+        fn(newVal,oldVal){
+          console.log('1',newVal,oldVal);
         }
+      },
+      //数据监控，有多种监控方式
+      //直接写方法  watch:{firsetName(){}}
+      //使用method中的方法 watch:{firstName:'fn'},
+      //使用数组 watch:{firstName:[()=>{},()=>{}]},
+      watch:{
+        firstName:'fn'
       }
     });
-    setTimeout(()=>{
-      // 值变化了，需要将依赖这个属性的计算属性，watcher设置为脏值
-      vm.age = 22;
-    },1000)
-    //计算属性
-    //依赖的值发生变化才会重新执行用户的方法 计算属性中要维护一个dirty属性，默认计算属性不会立刻执行
-    //计算属性就是一个defineProperty
-    //计算属性也是一个watcher，默认渲染会创造一个渲染watcher
+    // 还可以使用 vm.$watch()来进行监控
+    //其实上面的几种方式最终都会被转换成$watch的方式进行统一处理
+    vm.$watch(()=>vm.firstName,(newVal,oldVal)=>{
+      console.log("2",newVal,oldVal);
+    })
+    vm.$watch("firstName",(newVal,oldVal)=>{
+      console.log("3",newVal,oldVal);
+    })
   </script>
 </body>
 </html>

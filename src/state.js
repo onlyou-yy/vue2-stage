@@ -13,6 +13,10 @@ export function initState(vm){
     //初始化计算属性
     initComputed(vm);
   }
+  if(opts.watch){
+    //初始化监控
+    initWatch(vm);
+  }
 }
 
 /**初始化数据，生成相应式数据 */
@@ -105,4 +109,9 @@ function createComputedGetter(key){
     }
     return watcher.value;
   }
+}
+
+/**初始化监控 */
+function initWatch(vm){
+  let watch = vm.$options.watch;
 }
