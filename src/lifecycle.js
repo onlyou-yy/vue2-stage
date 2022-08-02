@@ -1,58 +1,6 @@
 import Watcher from "./observe/watcher";
 import { createElementVNode, createTextVNode } from "./vdom"
-
-/**创建真实DOM */
-function createElm(vnode){
-  let {tag,data,children,text} = vnode;
-  if(typeof tag === 'string'){
-    //标签
-    //将真实DOM挂载到虚拟DOM上，方便后续修改属性
-    vnode.el = document.createElement(tag);
-    // 设置属性
-    patchProps(vnode.el,data);
-    // 添加子节点
-    children.forEach(child => {
-      vnode.el.appendChild(createElm(child));
-    })
-  }else{
-    //tag为undefined就是个文本节点
-    vnode.el = document.createTextNode(text);
-  }
-  return vnode.el;
-}
-
-/**更新和初始化真实DOM的属性 */
-function patchProps(el,props){
-  for(let key in props){
-    if(key === 'style'){//值是 [{color:'red'}]
-      for(let styleName in props.style){
-        el.style[styleName] = props.style[styleName];
-      }
-    }else{
-      el.setAttribute(key,props[key]);
-    }
-  }
-}
-
-/**初始化和更新DOM */
-function patch(oldNode,vnode){
-  console.log(vnode);
-  //真实DOM中才有nodeType
-  const isRealElement = oldNode.nodeType;
-  if(isRealElement){
-    //是真实DOM，进行初始化挂载
-    let elm = oldNode;//当前节点
-    let parentElm = elm.parentNode;
-    //创建真实DOM
-    let newElm = createElm(vnode);
-    //先在原来的后面添加节点，然后再删除老节点
-    parentElm.insertBefore(newElm,elm.nextSibiling);//添加新节点
-    parentElm.removeChild(elm);//删除老节点
-    return newElm;
-  }else{
-    //diff 算法，对比两个虚拟DOM
-  }
-}
+import { patch } from "./vdom/patch";
 
 export function initLifeCycle(Vue){
   /**将虚拟DOM转化成真实DOM */

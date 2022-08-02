@@ -17,32 +17,8 @@
         firstName:'hello',
         secondName:'world',
         age:12,
-      },
-      methods:{
-        fn(newVal,oldVal){
-          console.log('1',newVal,oldVal);
-        }
-      },
-      //数据监控，有多种监控方式
-      //直接写方法  watch:{firsetName(){}}
-      //使用method中的方法 watch:{firstName:'fn'},
-      //使用数组 watch:{firstName:[()=>{},()=>{}]},
-      watch:{
-        firstName:'fn'
-        // firstName(newVal,oldVal){
-        //   console.log(newVal,oldVal,'xxxxx')
-        // }
       }
     });
-    // 还可以使用 vm.$watch()来进行监控
-    //其实上面的几种方式最终都会被转换成$watch的方式进行统一处理
-    vm.$watch(()=>vm.firstName,(newVal,oldVal)=>{
-      console.log("2",newVal,oldVal);
-    })
-    vm.$watch("firstName",(newVal,oldVal)=>{
-      console.log("3",newVal,oldVal);
-    })
-    vm.firstName = "22"
   </script>
 </body>
 </html>

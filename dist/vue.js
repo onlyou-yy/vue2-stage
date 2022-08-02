@@ -4,70 +4,6 @@
   (global = typeof globalThis !== 'undefined' ? globalThis : global || self, global.Vue = factory());
 })(this, (function () { 'use strict';
 
-  /**合并选项 */
-  function mergeOptions(parent, child) {
-    var options = {}; //定义一个新对象用来存储合并后的对象
-    //先合并父选项
-
-    for (var key in parent) {
-      mergeField(key);
-    } //再用子选项来覆盖和合并父选项
-
-
-    for (var _key in child) {
-      if (!parent.hasOwnProperty(_key)) {
-        mergeField(_key);
-      }
-    }
-
-    function mergeField(key) {
-      //采用策略模式减少 if/else
-      //如果不在策略中优先使用子
-      if (strats[key]) {
-        options[key] = strats[key](parent[key], child[key]);
-      } else {
-        //优先使用子的，再使用父的
-        options[key] = child[key] || parent[key];
-      }
-    }
-
-    return options;
-  } //策略模式
-
-  var strats = {};
-  var LIFECYCLE = ['beforeCreate', 'created', 'beforeMount', 'mounted', 'beforeUpdate', 'updated', 'beforeDestroy', 'destroyed'];
-  LIFECYCLE.forEach(function (hook) {
-    strats[hook] = function (p, c) {
-      // 第一次合并：{} + {created:fn} => {created:[fn]}
-      // 第二次合并：{created:fn1} + {created:fn2} => {created:[fn1,fn2]}
-      if (c) {
-        if (p) {
-          // 父子都有
-          return p.concat(c);
-        } else {
-          // 只有子有,初始化过程
-          return [c];
-        }
-      } else {
-        // 如果子没有，就直接使用父的
-        // 只要经过初始化过程， 父 就已经是个数组
-        // 如 {created:[fn]} + {a:1}
-        return p;
-      }
-    };
-  });
-
-  function initGlobalAPI(Vue) {
-    //Vue静态属性和方法
-    Vue.options = {};
-
-    Vue.mixin = function (mixin) {
-      //将用户选项和全局的options合并
-      this.options = mergeOptions(this.options, mixin);
-      return this;
-    };
-  }
-
   function _typeof(obj) {
     "@babel/helpers - typeof";
 
@@ -160,6 +96,63 @@
 
   function _nonIterableRest() {
     throw new TypeError("Invalid attempt to destructure non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method.");
+  }
+
+  function _createForOfIteratorHelper(o, allowArrayLike) {
+    var it = typeof Symbol !== "undefined" && o[Symbol.iterator] || o["@@iterator"];
+
+    if (!it) {
+      if (Array.isArray(o) || (it = _unsupportedIterableToArray(o)) || allowArrayLike && o && typeof o.length === "number") {
+        if (it) o = it;
+        var i = 0;
+
+        var F = function () {};
+
+        return {
+          s: F,
+          n: function () {
+            if (i >= o.length) return {
+              done: true
+            };
+            return {
+              done: false,
+              value: o[i++]
+            };
+          },
+          e: function (e) {
+            throw e;
+          },
+          f: F
+        };
+      }
+
+      throw new TypeError("Invalid attempt to iterate non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method.");
+    }
+
+    var normalCompletion = true,
+        didErr = false,
+        err;
+    return {
+      s: function () {
+        it = it.call(o);
+      },
+      n: function () {
+        var step = it.next();
+        normalCompletion = step.done;
+        return step;
+      },
+      e: function (e) {
+        didErr = true;
+        err = e;
+      },
+      f: function () {
+        try {
+          if (!normalCompletion && it.return != null) it.return();
+        } finally {
+          if (didErr) throw err;
+        }
+      }
+    };
   }
 
   /**
@@ -437,6 +430,70 @@
 
     var render = new Function(code);
     return render;
+  }
+
+  /**合并选项 */
+  function mergeOptions(parent, child) {
+    var options = {}; //定义一个新对象用来存储合并后的对象
+    //先合并父选项
+
+    for (var key in parent) {
+      mergeField(key);
+    } //再用子选项来覆盖和合并父选项
+
+
+    for (var _key in child) {
+      if (!parent.hasOwnProperty(_key)) {
+        mergeField(_key);
+      }
+    }
+
+    function mergeField(key) {
+      //采用策略模式减少 if/else
+      //如果不在策略中优先使用子
+      if (strats[key]) {
+        options[key] = strats[key](parent[key], child[key]);
+      } else {
+        //优先使用子的，再使用父的
+        options[key] = child[key] || parent[key];
+      }
+    }
+
+    return options;
+  } //策略模式
+
+  var strats = {};
+  var LIFECYCLE = ['beforeCreate', 'created', 'beforeMount', 'mounted', 'beforeUpdate', 'updated', 'beforeDestroy', 'destroyed'];
+  LIFECYCLE.forEach(function (hook) {
+    strats[hook] = function (p, c) {
+      // 第一次合并：{} + {created:fn} => {created:[fn]}
+      // 第二次合并：{created:fn1} + {created:fn2} => {created:[fn1,fn2]}
+      if (c) {
+        if (p) {
+          // 父子都有
+          return p.concat(c);
+        } else {
+          // 只有子有,初始化过程
+          return [c];
+        }
+      } else {
+        // 如果子没有，就直接使用父的
+        // 只要经过初始化过程， 父 就已经是个数组
+        // 如 {created:[fn]} + {a:1}
+        return p;
+      }
+    };
+  });
+
+  function initGlobalAPI(Vue) {
+    //Vue静态属性和方法
+    Vue.options = {};
+
+    Vue.mixin = function (mixin) {
+      //将用户选项和全局的options合并
+      this.options = mergeOptions(this.options, mixin);
+      return this;
+    };
   }
 
   var id$1 = 0;
@@ -758,6 +815,12 @@
       text: text
     };
   }
+  /**判断两个虚拟节点是否相同*/
+
+
+  function isSameVnode(vnode1, vnode2) {
+    return vnode1.tag === vnode2.tag && vnode1.keY === vnode2.key;
+  }
 
   /**创建真实DOM */
 
@@ -772,7 +835,7 @@
       //将真实DOM挂载到虚拟DOM上，方便后续修改属性
       vnode.el = document.createElement(tag); // 设置属性
 
-      patchProps(vnode.el, data); // 添加子节点
+      patchProps(vnode.el, {}, data); // 添加子节点
 
       children.forEach(function (child) {
         vnode.el.appendChild(createElm(child));
@@ -786,8 +849,46 @@
   }
   /**更新和初始化真实DOM的属性 */
 
+  function patchProps(el, oldProps, props) {
+    var oldStyle = oldProps.style || {};
+    var newStyle = props.style || {}; //老的有，新的没有，删除老的style
 
-  function patchProps(el, props) {
+    var _iterator = _createForOfIteratorHelper(oldStyle),
+        _step;
+
+    try {
+      for (_iterator.s(); !(_step = _iterator.n()).done;) {
+        var _key = _step.value;
+
+        if (!newStyle[_key]) {
+          el.style[_key] = '';
+        }
+      } //老的有，新的没有，删除老的属性
+
+    } catch (err) {
+      _iterator.e(err);
+    } finally {
+      _iterator.f();
+    }
+
+    var _iterator2 = _createForOfIteratorHelper(oldProps),
+        _step2;
+
+    try {
+      for (_iterator2.s(); !(_step2 = _iterator2.n()).done;) {
+        var _key2 = _step2.value;
+
+        if (!props[_key2]) {
+          el.removeAttribute(_key2);
+        }
+      } //用新的覆盖老的
+
+    } catch (err) {
+      _iterator2.e(err);
+    } finally {
+      _iterator2.f();
+    }
+
     for (var key in props) {
       if (key === 'style') {
         //值是 [{color:'red'}]
@@ -801,15 +902,14 @@
   }
   /**初始化和更新DOM */
 
-
-  function patch(oldNode, vnode) {
+  function patch(oldVNode, vnode) {
     console.log(vnode); //真实DOM中才有nodeType
 
-    var isRealElement = oldNode.nodeType;
+    var isRealElement = oldVNode.nodeType;
 
     if (isRealElement) {
       //是真实DOM，进行初始化挂载
-      var elm = oldNode; //当前节点
+      var elm = oldVNode; //当前节点
 
       var parentElm = elm.parentNode; //创建真实DOM
 
@@ -820,6 +920,46 @@
       parentElm.removeChild(elm); //删除老节点
 
       return newElm;
+    } else {
+      //diff 算法，对比两个虚拟DOM
+      //diff 算法是一个平级比较的过程，父亲与父亲比较，儿子与儿子比较
+      patchVnode(oldVNode, vnode);
+    }
+  } //1.两个接待你不是同一个节点，直接删除老的换上新的（没有比对）
+  //2.两个节点是同一个节点（判断节点的tag和key）比较两个节点的属性是否有差异
+  //3.节点比较完后就需要比较他们的子节点
+
+  /**对比两个虚拟节点 */
+
+  function patchVnode(oldVNode, vnode) {
+    if (!isSameVnode(oldVNode, vnode)) {
+      //两个节点不一样,用老节点的父亲进行替换
+      var _el = createElm(vnode);
+
+      return oldVNode.el.parentNode.replaceChild(_el, oldVNode.el);
+    }
+
+    var el = vnode.el = oldVNode.el; //复用老节点元素
+    //文本的情况 tag为undefined时为文本
+
+    if (!oldVNode.tag) {
+      //是文本
+      if (oldVNode.text !== vnode.text) {
+        // 用新节点文本替换就节点文本
+        el.textContent = vnode.text;
+      }
+    } // 是标签，需要比较标签的属性
+
+
+    patchProps(el, oldVNode.data, vnode.data); // 比较两个的儿子节点，一方有儿子，一方没儿子，还有就是来两方都有儿子
+
+    var oldChildren = oldVNode.children || [];
+    var newChildren = vnode.children || [];
+
+    if (oldChildren.length > 0 && newChildren.length > 0) ; else if (newChildren.length > 0) {
+      //没有老的，有新的，新增子节点
+      //将
+      mountChildren();
     }
   }
 
@@ -1216,6 +1356,21 @@
 
     return vm.$watch(key, handler);
   }
+  /**初始化nextTick $watch */
+
+
+  function initStateMixin(Vue) {
+    Vue.prototype.$nextTick = nextTick; //最终调用的都是这个方法
+
+    Vue.prototype.$watch = function (exprOrFn, cb) {
+      // 创建一个 Watcher
+      // 当监听的值发生变化的时候执行回调
+      // {user:true} 标志是用户自定定义的
+      new Watcher(this, exprOrFn, {
+        user: true
+      }, cb);
+    };
+  }
 
   /**
    * 初始化函数，就是为Vue添加_init方法
@@ -1282,19 +1437,36 @@
   } // 添加方法
 
 
-  Vue.prototype.$nextTick = nextTick;
-  initMixin(Vue);
-  initLifeCycle(Vue);
-  initGlobalAPI(Vue); //最终调用的都是这个方法
+  initMixin(Vue); //扩展init方法
 
-  Vue.prototype.$watch = function (exprOrFn, cb) {
-    // 创建一个 Watcher
-    // 当监听的值发生变化的时候执行回调
-    // {user:true} 标志是用户自定定义的
-    new Watcher(this, exprOrFn, {
-      user: true
-    }, cb);
-  };
+  initLifeCycle(Vue); //vm._update,vm._render
+
+  initGlobalAPI(Vue); //全部 API
+
+  initStateMixin(Vue); //实现 nextTick $watch
+  //------------- 观察前后节点，测试 -------------
+
+  var vm = new Vue({
+    data: {
+      name: 'jack'
+    }
+  });
+  var render1 = compileToFunction("<div>{{name}}</div>");
+  var preVNode = render1.call(vm);
+  var el1 = createElm(preVNode);
+  var render2 = compileToFunction("<span>{{name}}</span>");
+  var nextVNode = render2.call(vm);
+  var el2 = createElm(nextVNode);
+  document.body.appendChild(el1); //以往都是直接替换掉整个元素
+  //在每次获取dom的时候都要重新计算dom位置以及其他的一些属性
+  //而且在创建dom的时候会初始化很多dom中的属性和方法
+  //所以这样做是比较耗性能
+
+  setTimeout(function () {
+    patch(preVNode, nextVNode);
+    el1.parentNode.replaceChild(el2, el1);
+  }, 3000);
+  console.log(preVNode, nextVNode);
 
   return Vue;
 

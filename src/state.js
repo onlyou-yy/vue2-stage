@@ -1,6 +1,6 @@
 import { observe } from "./observe";
 import Dep from "./observe/dep";
-import Watcher from "./observe/watcher";
+import Watcher, { nextTick } from "./observe/watcher";
 
 /**初始化状态 */
 export function initState(vm){
@@ -136,4 +136,16 @@ function createWatcher(vm,key,handler){
     handler = vm.$options.methods[handler];
   }
   return vm.$watch(key,handler);
+}
+
+/**初始化nextTick $watch */
+export function initStateMixin(Vue){
+  Vue.prototype.$nextTick = nextTick;
+  //最终调用的都是这个方法
+  Vue.prototype.$watch = function(exprOrFn,cb){
+    // 创建一个 Watcher
+    // 当监听的值发生变化的时候执行回调
+    // {user:true} 标志是用户自定定义的
+    new Watcher(this,exprOrFn,{user:true},cb);
+  }
 }
