@@ -114,4 +114,26 @@ function createComputedGetter(key){
 /**初始化监控 */
 function initWatch(vm){
   let watch = vm.$options.watch;
+  for(let key in watch){
+    const handler = watch[key];
+    //值有几种情况，字符串、数组、函数、对象
+    //现在只考虑前三种情况，而且不考虑深度监控的情况
+    if(Array.isArray(handler)){
+      for(let i = 0;i<handler.length;i++){
+        createWatcher(vm,key,handler[i]);
+      }
+    }else{
+      //字符串、函数
+      createWatcher(vm,key,handler);
+    }
+  }
+}
+
+/**创建 watch */
+function createWatcher(vm,key,handler){
+  //字符串时取
+  if(typeof handler === 'string'){
+    handler = vm.$options.methods[handler].bind(vm);
+  }
+  return vm.$watch(key,handler);
 }

@@ -8,7 +8,6 @@
 </head>
 <body>
   <div id="app" style="background-color:yellow;">
-    {{fullName}} / {{fullName}} / {{fullName}}
   </div>
   <script src="./vue.js"></script>
   <script>
@@ -30,6 +29,9 @@
       //使用数组 watch:{firstName:[()=>{},()=>{}]},
       watch:{
         firstName:'fn'
+        // firstName(newVal,oldVal){
+        //   console.log(newVal,oldVal,'xxxxx')
+        // }
       }
     });
     // 还可以使用 vm.$watch()来进行监控
@@ -40,6 +42,7 @@
     vm.$watch("firstName",(newVal,oldVal)=>{
       console.log("3",newVal,oldVal);
     })
+    vm.firstName = "22"
   </script>
 </body>
 </html>

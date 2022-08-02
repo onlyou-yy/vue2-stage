@@ -503,18 +503,35 @@
   var Watcher = /*#__PURE__*/function () {
     /**
      * @param vm 组件实例
-     * @param fn 更新组件的方法
+     * @param exprOrFn 回调的方法
      * @param options 是否是一个渲染watcher
      */
-    function Watcher(vm, fn, options) {
+    function Watcher(vm, exprOrFn, options, cb) {
       _classCallCheck(this, Watcher);
 
       //id 用来区分每个组件的watcher
       this.id = id++; //是否是一个渲染watcher
 
-      this.renderWatcher = options; //getter 意味着调用这个函数可以发生取值操作,也就是收集依赖
+      this.renderWatcher = options;
+      /**########################## watch相关 ########################## */
 
-      this.getter = fn; // 后续实现计算属性和一些清楚工作的时候需要用到dep
+      this.cb = cb; //exprOrFn可能是函数也可能是字符串,所以需要统一先处理成函数
+
+      if (typeof exprOrFn === 'string') {
+        this.getter = function () {
+          return vm[exprOrFn];
+        };
+      } else {
+        //getter 意味着调用这个函数可以发生取值操作,也就是收集依赖
+        this.getter = exprOrFn;
+      } //标识是否是用户自己定义的wathcer
+
+
+      this.user = options.user;
+      /**########################## watch相关 ########################## */
+
+      /**########################## computed相关 ######################### */
+      // 后续实现计算属性和一些清楚工作的时候需要用到dep
       // 比如说某个组件卸载了，需要再dep中移除当前watcher
       // 所以再这里还需要将dep也记录收集一下
 
@@ -524,10 +541,13 @@
       this.lazy = options.lazy; //是否是脏
 
       this.dirty = this.lazy;
+      /**########################## computed相关 ######################### */
+
       this.vm = vm; //初始的时候调用一下 getter
       //如果是懒加载，那么第一次时不用执行的
+      //存储第一次执行的值（老值） 
 
-      this.lazy ? undefined : this.get();
+      this.value = this.lazy ? undefined : this.get();
     } //获取计算属性处理结果(计算属性watcher)
 
 
@@ -592,7 +612,15 @@
     }, {
       key: "run",
       value: function run() {
-        this.get();
+        //获取老值
+        var oldVal = this.value; //获取新值
+
+        var newVal = this.get();
+
+        if (this.user) {
+          //如果是用户自己定义wathcer 在值变化的时候就在执行一下回调
+          this.cb.call(this.vm, newVal, oldVal);
+        }
       }
     }]);
 
@@ -1049,6 +1077,11 @@
       //初始化计算属性
       initComputed(vm);
     }
+
+    if (opts.watch) {
+      //初始化监控
+      initWatch(vm);
+    }
   }
   /**初始化数据，生成相应式数据 */
 
@@ -1152,6 +1185,37 @@
       return watcher.value;
     };
   }
+  /**初始化监控 */
+
+
+  function initWatch(vm) {
+    var watch = vm.$options.watch;
+
+    for (var key in watch) {
+      var handler = watch[key]; //值有几种情况，字符串、数组、函数、对象
+      //现在只考虑前三种情况，而且不考虑深度监控的情况
+
+      if (Array.isArray(handler)) {
+        for (var i = 0; i < handler.length; i++) {
+          createWatcher(vm, key, handler[i]);
+        }
+      } else {
+        //字符串、函数
+        createWatcher(vm, key, handler);
+      }
+    }
+  }
+  /**创建 watch */
+
+
+  function createWatcher(vm, key, handler) {
+    //字符串时取
+    if (typeof handler === 'string') {
+      handler = vm.$options.methods[handler].bind(vm);
+    }
+
+    return vm.$watch(key, handler);
+  }
 
   /**
    * 初始化函数，就是为Vue添加_init方法
@@ -1221,7 +1285,16 @@
   Vue.prototype.$nextTick = nextTick;
   initMixin(Vue);
   initLifeCycle(Vue);
-  initGlobalAPI(Vue);
+  initGlobalAPI(Vue); //最终调用的都是这个方法
+
+  Vue.prototype.$watch = function (exprOrFn, cb) {
+    // 创建一个 Watcher
+    // 当监听的值发生变化的时候执行回调
+    // {user:true} 标志是用户自定定义的
+    new Watcher(this, exprOrFn, {
+      user: true
+    }, cb);
+  };
 
   return Vue;
 

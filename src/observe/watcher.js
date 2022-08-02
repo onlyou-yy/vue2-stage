@@ -20,16 +20,31 @@ let id = 0;
 class Watcher{
   /**
    * @param vm 组件实例
-   * @param fn 更新组件的方法
+   * @param exprOrFn 回调的方法
    * @param options 是否是一个渲染watcher
    */
-  constructor(vm,fn,options){
+  constructor(vm,exprOrFn,options,cb){
     //id 用来区分每个组件的watcher
     this.id = id++;
     //是否是一个渲染watcher
     this.renderWatcher = options;
-    //getter 意味着调用这个函数可以发生取值操作,也就是收集依赖
-    this.getter = fn;
+
+    /**########################## watch相关 ########################## */
+    this.cb = cb;
+    //exprOrFn可能是函数也可能是字符串,所以需要统一先处理成函数
+    if(typeof exprOrFn === 'string'){
+      this.getter = function(){
+        return vm[exprOrFn];
+      }
+    }else{
+      //getter 意味着调用这个函数可以发生取值操作,也就是收集依赖
+      this.getter = exprOrFn;
+    }
+    //标识是否是用户自己定义的wathcer
+    this.user = options.user;
+    /**########################## watch相关 ########################## */
+    
+    /**########################## computed相关 ######################### */
     // 后续实现计算属性和一些清楚工作的时候需要用到dep
     // 比如说某个组件卸载了，需要再dep中移除当前watcher
     // 所以再这里还需要将dep也记录收集一下
@@ -40,12 +55,14 @@ class Watcher{
     this.lazy = options.lazy;
     //是否是脏
     this.dirty = this.lazy;
+    /**########################## computed相关 ######################### */
 
     this.vm = vm;
 
     //初始的时候调用一下 getter
     //如果是懒加载，那么第一次时不用执行的
-    this.lazy ? undefined :this.get();
+    //存储第一次执行的值（老值） 
+    this.value = this.lazy ? undefined :this.get();
   }
   //获取计算属性处理结果(计算属性watcher)
   evaluate(){
@@ -89,7 +106,14 @@ class Watcher{
     }
   }
   run(){
-    this.get();
+    //获取老值
+    let oldVal = this.value;
+    //获取新值
+    let newVal = this.get();
+    if(this.user){
+      //如果是用户自己定义wathcer 在值变化的时候就在执行一下回调
+      this.cb.call(this.vm,newVal,oldVal);
+    }
   }
 }
 
