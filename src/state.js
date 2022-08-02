@@ -133,7 +133,7 @@ function initWatch(vm){
 function createWatcher(vm,key,handler){
   //字符串时取
   if(typeof handler === 'string'){
-    handler = vm.$options.methods[handler].bind(vm);
+    handler = vm.$options.methods[handler];
   }
   return vm.$watch(key,handler);
 }
