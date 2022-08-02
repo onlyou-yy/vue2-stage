@@ -98,9 +98,58 @@ function patchVnode(oldVNode,vnode){
   let newChildren = vnode.children || [];
   if(oldChildren.length > 0 && newChildren.length > 0){
     //两方都有儿子，比较两个人的儿子
+    updateChildren(el,oldChildren,newChildren);
   }else if(newChildren.length > 0){
     //没有老的，有新的，新增子节点
-    //将
-    mountChildren()
+    //将新节点元素挂载到节点上
+    mountChildren(el,newChildren);
+  }else if(oldChildren.length > 0){
+    //有老的，没有新的，删除子节点
+    el.innerHTML = "";
+  }
+  return el;
+}
+
+/**挂载子元素的父元素上 */
+function mountChildren(el,children){
+  for(let i = 0; i < children.length;i++){
+    let child = children[i];
+    el.appendChild(createElm(child))
+  }
+}
+
+/**对比更新两个子节点 */
+function updateChildren(el,oldChildren,newChildren){
+  //在vue2中采用双指针的方式来进行两子节点的对比，这样就会性能会比较高
+  /**
+   *    s1    e1
+   *    |     |
+   * o: a  b  c 
+   * n: a  b  c  d
+   *    |        |
+   *    s2       e2
+   */
+  /**
+   * 对新老子节点列表，分别定义两个指针，
+   * 老节点开始指针 s1,老节点结束指针 e1
+   * 新节点开始指针 s1,新节点结束指针 e1
+   * ---------- 新增的情况 ------------
+   * 两组节点列表同时开始进行遍历循环，开始的时候 s1 和 s2 同时执行各自的第一位元素
+   * 如果两个节点是相同的就移动到第二位继续进行对比，如果相同就继续上面的步骤，
+   * 直到 s1 指向的位置大于 e1 的位置的时候，老节点 s1 停止,s2继续往下，
+   * s2 指向 d,表示 d 是新增的，将d添加到 el 中
+   */
+  let oldStartIndex = 0;//老节点开始指针
+  let newStartIndex = 0;//新节点开始指针
+  let oldEndIndex = oldChildren.length - 1;//老节点结束指针
+  let newEndIndex = newChildren.length - 1;//新节点结束指针
+
+  let oldStartVnode = oldChildren[0];
+  let newStartVnode = newChildren[0];
+  let oldEndVnode = oldChildren[oldEndIndex];
+  let newEndVnode = newChildren[newEndIndex];
+
+  while(oldStartIndex <= oldEndIndex && newStartIndex <= newEndIndex){
+    //双方有一方头指针大于尾部指针则停止循环
   }
 }
