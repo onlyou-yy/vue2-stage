@@ -21,17 +21,17 @@ export function createElm(vnode){
 }
 
 /**更新和初始化真实DOM的属性 */
-export function patchProps(el,oldProps,props){
+export function patchProps(el,oldProps = {},props = {}){
   let oldStyle = oldProps.style || {};
   let newStyle = props.style || {};
   //老的有，新的没有，删除老的style
-  for(let key of oldStyle){
+  for(let key in oldStyle){
     if(!newStyle[key]){
       el.style[key] = '';
     }
   }
   //老的有，新的没有，删除老的属性
-  for(let key of oldProps){
+  for(let key in oldProps){
     if(!props[key]){
       el.removeAttribute(key);
     }
@@ -121,7 +121,7 @@ function mountChildren(el,children){
 /**对比更新两个子节点 */
 function updateChildren(el,oldChildren,newChildren){
   //在vue2中采用双指针的方式来进行两子节点的对比，这样就会性能会比较高
-  /**
+  /**场景1:头部比对
    *    s1    e1
    *    |     |
    * o: a  b  c 
@@ -139,6 +139,38 @@ function updateChildren(el,oldChildren,newChildren){
    * 直到 s1 指向的位置大于 e1 的位置的时候，老节点 s1 停止,s2继续往下，
    * s2 指向 d,表示 d 是新增的，将d添加到 el 中
    */
+  /**场景2:尾部比对
+   *       s1    e1
+   *       |     |
+   * o:    a  b  c 
+   * n: d  a  b  c
+   *    ｜       ｜
+   *    s2       e2
+   */
+  /**场景3:交叉比对 e1 == s2
+   *    s1       e1
+   *    |        |
+   * o: a  b  c  d
+   * n: d  a  b  c
+   *    ｜       ｜
+   *    s2       e2
+   *
+  **场景4:交叉比对 s1 == e2
+   *    s1       e1
+   *    |        |
+   * o: a  b  c  d
+   * n: d  c  b  a
+   *    ｜       ｜
+   *    s2       e2
+   */
+  /**场景5:乱序比对
+   *    s1       e1
+   *    |        |
+   * o: a  b  c  d
+   * n: d  c  b  a
+   *    ｜       ｜
+   *    s2       e2
+   */
   let oldStartIndex = 0;//老节点开始指针
   let newStartIndex = 0;//新节点开始指针
   let oldEndIndex = oldChildren.length - 1;//老节点结束指针
@@ -149,7 +181,84 @@ function updateChildren(el,oldChildren,newChildren){
   let oldEndVnode = oldChildren[oldEndIndex];
   let newEndVnode = newChildren[newEndIndex];
 
+  /**创建 节点索引映射 */
+  function makeIndexByKey(children){
+    let map = {}
+    children.forEach((child,index)=>{
+      map[child.key] = index;
+    })
+    return map;
+  }
+  let map = makeIndexByKey(oldChildren);
+
+  //双方有一方头指针大于尾部指针则停止循环
   while(oldStartIndex <= oldEndIndex && newStartIndex <= newEndIndex){
-    //双方有一方头指针大于尾部指针则停止循环
+    //复用都是针对老的节点列表而言的
+    //在头部比对，尾部比对，交叉比对的情况下，都是将老节点在新节点指针的位置进行插入或者删除
+    //如果批量向页面中插入内容，浏览器会自动优化
+    
+    if(!oldStartVnode){//在乱序对比的时候，节点可能在移动后被移除
+      oldStartVnode = oldChildren[++oldStartIndex];
+    }else if(!oldEndVnode){//在乱序对比的时候，节点可能在移动后被移除
+      oldEndVnode = oldChildren[--oldEndIndex];
+    }else if(isSameVnode(oldStartVnode,newStartVnode)){// 从头部开始对比
+      //如果是相同节点就递归比价子节点
+      patchVnode(oldStartVnode,newStartVnode);
+      oldStartVnode = oldChildren[++oldStartIndex];
+      newStartVnode = newChildren[++newStartIndex];
+    }else if(isSameVnode(oldEndVnode,newEndVnode)){//从尾部开始对比
+      patchVnode(oldEndVnode,newEndVnode);
+      oldEndVnode = oldChildren[--oldEndIndex];
+      newEndVnode = newChildren[--newEndIndex];
+    }else if(isSameVnode(oldEndVnode,newStartVnode)){//交叉比对 新头和旧尾对比
+      patchVnode(oldEndVnode,newStartVnode);
+      //将老的尾巴移动到老的开头的前面
+      el.insertBefore(oldEndVnode.el,oldStartVnode.el);
+      oldEndVnode = oldChildren[--oldEndIndex];
+      newStartVnode = newChildren[++newStartIndex];
+    }else if(isSameVnode(oldStartVnode,newEndVnode)){//交叉比对 新尾和旧头对比
+      patchVnode(oldStartVnode,newEndVnode);
+      //将老的头部移动到老末尾的下一个元素的前面
+      el.insertBefore(oldStartVnode.el,oldEndVnode.el.nextSibiling);
+      oldStartVnode = oldChildren[++oldStartIndex];
+      newEndVnode = newChildren[--newEndIndex];
+    }else{
+      // 乱序比对
+      // 根据老的列表做一个映射关系，用新的去找，找到就移动，最后多余的就删除
+      let moveIndex = map[newStartVnode.key];
+      if(moveIndex !== undefined){
+        let moveVnode = oldChildren[moveIndex];//找到对应的虚拟节点复用
+        el.insertBefore(moveVnode.el,oldStartVnode.el);//将节点插入到老开始指针指向的节点之前
+        oldChildren[moveIndex] = undefined;//表示这个节点已经移动过了
+        patchVnode(moveVnode,newStartVnode);//对比属性和子节点
+      }else{
+        //没有找到，表示新增，将节点插入到老开始指针指向的节点之前
+        el.insertBefore(createElm(newStartVnode),oldStartVnode.el);
+      }
+      // 对比之后继续下一个对比
+      newStartVnode = newChildren[++newStartIndex];
+    } 
+  }
+  //while结束说明有一方的头指针大于尾指针
+  //如果新节点头指针小于尾指针，说明之间的节点都是新增的
+  if(newStartIndex <= newEndIndex){
+    for(let i = newStartIndex;i <= newEndIndex;i++){
+      let childEl = createElm(newChildren[i]);
+      //可能是在后面追加也可能是在前面追加
+      //当新节点的头指针的下一个还有元素的时候表示在下一个元素的前面追加
+      //如果下一个元素没有就表示是在末尾追加
+      let anchor = newChildren[newEndIndex + 1] ? newChildren[newEndIndex + 1].el : null;
+      el.insertBefore(childEl,anchor);//当 anchor 为 null 的时候 insetBefore 就会使用 appendChild
+    }
+  }
+  //如果旧节点头指针小于尾指针，说明之间的节点都是需要删除的
+  if(oldStartIndex <= oldEndIndex){
+    for(let i = oldStartIndex;i <= oldEndIndex;i++){
+      //在乱序比对的时候，可能会被移走后设置为 undefined
+      if(oldChildren[i]){
+        let childEl = oldChildren[i].el;
+        el.removeChild(childEl);
+      }
+    }
   }
 }

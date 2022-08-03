@@ -19,11 +19,31 @@ initStateMixin(Vue);//实现 nextTick $watch
 //------------- 观察前后节点，测试 -------------
 
 let vm = new Vue({data:{name:'jack'}});
-let render1 = compileToFunction(`<div>{{name}}</div>`);
+let render1 = compileToFunction(
+`<ul>
+<li key="1">1</li>
+<li key="2">2</li>
+<li key="3">3</li>
+</ul>`
+);
 let preVNode = render1.call(vm);
 let el1 = createElm(preVNode);
 
-let render2 = compileToFunction(`<span>{{name}}</span>`);
+let render2 = compileToFunction(
+`<ul>
+<li key="8">8</li>
+<li key="4">4</li>
+<li key="3">3</li>
+<li key="9">9</li>
+<li key="5">5</li>
+<li key="2">2</li>
+<li key="6">6</li>
+<li key="7">7</li>
+<li key="10">10</li>
+</ul>`
+);
+
+
 let nextVNode = render2.call(vm);
 let el2 = createElm(nextVNode);
 

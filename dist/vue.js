@@ -98,63 +98,6 @@
     throw new TypeError("Invalid attempt to destructure non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method.");
   }
 
-  function _createForOfIteratorHelper(o, allowArrayLike) {
-    var it = typeof Symbol !== "undefined" && o[Symbol.iterator] || o["@@iterator"];
-
-    if (!it) {
-      if (Array.isArray(o) || (it = _unsupportedIterableToArray(o)) || allowArrayLike && o && typeof o.length === "number") {
-        if (it) o = it;
-        var i = 0;
-
-        var F = function () {};
-
-        return {
-          s: F,
-          n: function () {
-            if (i >= o.length) return {
-              done: true
-            };
-            return {
-              done: false,
-              value: o[i++]
-            };
-          },
-          e: function (e) {
-            throw e;
-          },
-          f: F
-        };
-      }
-
-      throw new TypeError("Invalid attempt to iterate non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method.");
-    }
-
-    var normalCompletion = true,
-        didErr = false,
-        err;
-    return {
-      s: function () {
-        it = it.call(o);
-      },
-      n: function () {
-        var step = it.next();
-        normalCompletion = step.done;
-        return step;
-      },
-      e: function (e) {
-        didErr = true;
-        err = e;
-      },
-      f: function () {
-        try {
-          if (!normalCompletion && it.return != null) it.return();
-        } finally {
-          if (didErr) throw err;
-        }
-      }
-    };
-  }
-
   /**
    * 一般解析html 都不会自己去写，可以使用第三方包，htmlparser2
    * 也可以在 https://astexplorer.net/ 感受 ast的转化
@@ -819,7 +762,7 @@
 
 
   function isSameVnode(vnode1, vnode2) {
-    return vnode1.tag === vnode2.tag && vnode1.keY === vnode2.key;
+    return vnode1.tag === vnode2.tag && vnode1.key === vnode2.key;
   }
 
   /**创建真实DOM */
@@ -849,54 +792,34 @@
   }
   /**更新和初始化真实DOM的属性 */
 
-  function patchProps(el, oldProps, props) {
+  function patchProps(el) {
+    var oldProps = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {};
+    var props = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : {};
     var oldStyle = oldProps.style || {};
     var newStyle = props.style || {}; //老的有，新的没有，删除老的style
 
-    var _iterator = _createForOfIteratorHelper(oldStyle),
-        _step;
+    for (var key in oldStyle) {
+      if (!newStyle[key]) {
+        el.style[key] = '';
+      }
+    } //老的有，新的没有，删除老的属性
 
-    try {
-      for (_iterator.s(); !(_step = _iterator.n()).done;) {
-        var _key = _step.value;
 
-        if (!newStyle[_key]) {
-          el.style[_key] = '';
-        }
-      } //老的有，新的没有，删除老的属性
+    for (var _key in oldProps) {
+      if (!props[_key]) {
+        el.removeAttribute(_key);
+      }
+    } //用新的覆盖老的
 
-    } catch (err) {
-      _iterator.e(err);
-    } finally {
-      _iterator.f();
-    }
 
-    var _iterator2 = _createForOfIteratorHelper(oldProps),
-        _step2;
-
-    try {
-      for (_iterator2.s(); !(_step2 = _iterator2.n()).done;) {
-        var _key2 = _step2.value;
-
-        if (!props[_key2]) {
-          el.removeAttribute(_key2);
-        }
-      } //用新的覆盖老的
-
-    } catch (err) {
-      _iterator2.e(err);
-    } finally {
-      _iterator2.f();
-    }
-
-    for (var key in props) {
-      if (key === 'style') {
+    for (var _key2 in props) {
+      if (_key2 === 'style') {
         //值是 [{color:'red'}]
         for (var styleName in props.style) {
           el.style[styleName] = props.style[styleName];
         }
       } else {
-        el.setAttribute(key, props[key]);
+        el.setAttribute(_key2, props[_key2]);
       }
     }
   }
@@ -956,10 +879,193 @@
     var oldChildren = oldVNode.children || [];
     var newChildren = vnode.children || [];
 
-    if (oldChildren.length > 0 && newChildren.length > 0) ; else if (newChildren.length > 0) {
+    if (oldChildren.length > 0 && newChildren.length > 0) {
+      //两方都有儿子，比较两个人的儿子
+      updateChildren(el, oldChildren, newChildren);
+    } else if (newChildren.length > 0) {
       //没有老的，有新的，新增子节点
-      //将
-      mountChildren();
+      //将新节点元素挂载到节点上
+      mountChildren(el, newChildren);
+    } else if (oldChildren.length > 0) {
+      //有老的，没有新的，删除子节点
+      el.innerHTML = "";
+    }
+
+    return el;
+  }
+  /**挂载子元素的父元素上 */
+
+
+  function mountChildren(el, children) {
+    for (var i = 0; i < children.length; i++) {
+      var child = children[i];
+      el.appendChild(createElm(child));
+    }
+  }
+  /**对比更新两个子节点 */
+
+
+  function updateChildren(el, oldChildren, newChildren) {
+    //在vue2中采用双指针的方式来进行两子节点的对比，这样就会性能会比较高
+
+    /**场景1:头部比对
+     *    s1    e1
+     *    |     |
+     * o: a  b  c 
+     * n: a  b  c  d
+     *    |        |
+     *    s2       e2
+     */
+
+    /**
+     * 对新老子节点列表，分别定义两个指针，
+     * 老节点开始指针 s1,老节点结束指针 e1
+     * 新节点开始指针 s1,新节点结束指针 e1
+     * ---------- 新增的情况 ------------
+     * 两组节点列表同时开始进行遍历循环，开始的时候 s1 和 s2 同时执行各自的第一位元素
+     * 如果两个节点是相同的就移动到第二位继续进行对比，如果相同就继续上面的步骤，
+     * 直到 s1 指向的位置大于 e1 的位置的时候，老节点 s1 停止,s2继续往下，
+     * s2 指向 d,表示 d 是新增的，将d添加到 el 中
+     */
+
+    /**场景2:尾部比对
+     *       s1    e1
+     *       |     |
+     * o:    a  b  c 
+     * n: d  a  b  c
+     *    ｜       ｜
+     *    s2       e2
+     */
+
+    /**场景3:交叉比对 e1 == s2
+     *    s1       e1
+     *    |        |
+     * o: a  b  c  d
+     * n: d  a  b  c
+     *    ｜       ｜
+     *    s2       e2
+     *
+    **场景4:交叉比对 s1 == e2
+     *    s1       e1
+     *    |        |
+     * o: a  b  c  d
+     * n: d  c  b  a
+     *    ｜       ｜
+     *    s2       e2
+     */
+
+    /**场景5:乱序比对
+     *    s1       e1
+     *    |        |
+     * o: a  b  c  d
+     * n: d  c  b  a
+     *    ｜       ｜
+     *    s2       e2
+     */
+    var oldStartIndex = 0; //老节点开始指针
+
+    var newStartIndex = 0; //新节点开始指针
+
+    var oldEndIndex = oldChildren.length - 1; //老节点结束指针
+
+    var newEndIndex = newChildren.length - 1; //新节点结束指针
+
+    var oldStartVnode = oldChildren[0];
+    var newStartVnode = newChildren[0];
+    var oldEndVnode = oldChildren[oldEndIndex];
+    var newEndVnode = newChildren[newEndIndex];
+    /**创建 节点索引映射 */
+
+    function makeIndexByKey(children) {
+      var map = {};
+      children.forEach(function (child, index) {
+        map[child.key] = index;
+      });
+      return map;
+    }
+
+    var map = makeIndexByKey(oldChildren); //双方有一方头指针大于尾部指针则停止循环
+
+    while (oldStartIndex <= oldEndIndex && newStartIndex <= newEndIndex) {
+      //复用都是针对老的节点列表而言的
+      //在头部比对，尾部比对，交叉比对的情况下，都是将老节点在新节点指针的位置进行插入或者删除
+      //如果批量向页面中插入内容，浏览器会自动优化
+      if (!oldStartVnode) {
+        //在乱序对比的时候，节点可能在移动后被移除
+        oldStartVnode = oldChildren[++oldStartIndex];
+      } else if (!oldEndVnode) {
+        //在乱序对比的时候，节点可能在移动后被移除
+        oldEndVnode = oldChildren[--oldEndIndex];
+      } else if (isSameVnode(oldStartVnode, newStartVnode)) {
+        // 从头部开始对比
+        //如果是相同节点就递归比价子节点
+        patchVnode(oldStartVnode, newStartVnode);
+        oldStartVnode = oldChildren[++oldStartIndex];
+        newStartVnode = newChildren[++newStartIndex];
+      } else if (isSameVnode(oldEndVnode, newEndVnode)) {
+        //从尾部开始对比
+        patchVnode(oldEndVnode, newEndVnode);
+        oldEndVnode = oldChildren[--oldEndIndex];
+        newEndVnode = newChildren[--newEndIndex];
+      } else if (isSameVnode(oldEndVnode, newStartVnode)) {
+        //交叉比对 新头和旧尾对比
+        patchVnode(oldEndVnode, newStartVnode); //将老的尾巴移动到老的开头的前面
+
+        el.insertBefore(oldEndVnode.el, oldStartVnode.el);
+        oldEndVnode = oldChildren[--oldEndIndex];
+        newStartVnode = newChildren[++newStartIndex];
+      } else if (isSameVnode(oldStartVnode, newEndVnode)) {
+        //交叉比对 新尾和旧头对比
+        patchVnode(oldStartVnode, newEndVnode); //将老的头部移动到老末尾的下一个元素的前面
+
+        el.insertBefore(oldStartVnode.el, oldEndVnode.el.nextSibiling);
+        oldStartVnode = oldChildren[++oldStartIndex];
+        newEndVnode = newChildren[--newEndIndex];
+      } else {
+        // 乱序比对
+        // 根据老的列表做一个映射关系，用新的去找，找到就移动，最后多余的就删除
+        var moveIndex = map[newStartVnode.key];
+
+        if (moveIndex !== undefined) {
+          var moveVnode = oldChildren[moveIndex]; //找到对应的虚拟节点复用
+
+          el.insertBefore(moveVnode.el, oldStartVnode.el); //将节点插入到老开始指针指向的节点之前
+
+          oldChildren[moveIndex] = undefined; //表示这个节点已经移动过了
+
+          patchVnode(moveVnode, newStartVnode); //对比属性和子节点
+        } else {
+          //没有找到，表示新增，将节点插入到老开始指针指向的节点之前
+          el.insertBefore(createElm(newStartVnode), oldStartVnode.el);
+        } // 对比之后继续下一个对比
+
+
+        newStartVnode = newChildren[++newStartIndex];
+      }
+    } //while结束说明有一方的头指针大于尾指针
+    //如果新节点头指针小于尾指针，说明之间的节点都是新增的
+
+
+    if (newStartIndex <= newEndIndex) {
+      for (var i = newStartIndex; i <= newEndIndex; i++) {
+        var childEl = createElm(newChildren[i]); //可能是在后面追加也可能是在前面追加
+        //当新节点的头指针的下一个还有元素的时候表示在下一个元素的前面追加
+        //如果下一个元素没有就表示是在末尾追加
+
+        var anchor = newChildren[newEndIndex + 1] ? newChildren[newEndIndex + 1].el : null;
+        el.insertBefore(childEl, anchor); //当 anchor 为 null 的时候 insetBefore 就会使用 appendChild
+      }
+    } //如果旧节点头指针小于尾指针，说明之间的节点都是需要删除的
+
+
+    if (oldStartIndex <= oldEndIndex) {
+      for (var _i = oldStartIndex; _i <= oldEndIndex; _i++) {
+        //在乱序比对的时候，可能会被移走后设置为 undefined
+        if (oldChildren[_i]) {
+          var _childEl = oldChildren[_i].el;
+          el.removeChild(_childEl);
+        }
+      }
     }
   }
 
@@ -1451,10 +1557,10 @@
       name: 'jack'
     }
   });
-  var render1 = compileToFunction("<div>{{name}}</div>");
+  var render1 = compileToFunction("<ul>\n<li key=\"1\">1</li>\n<li key=\"2\">2</li>\n<li key=\"3\">3</li>\n</ul>");
   var preVNode = render1.call(vm);
   var el1 = createElm(preVNode);
-  var render2 = compileToFunction("<span>{{name}}</span>");
+  var render2 = compileToFunction("<ul>\n<li key=\"8\">8</li>\n<li key=\"4\">4</li>\n<li key=\"3\">3</li>\n<li key=\"9\">9</li>\n<li key=\"5\">5</li>\n<li key=\"2\">2</li>\n<li key=\"6\">6</li>\n<li key=\"7\">7</li>\n<li key=\"10\">10</li>\n</ul>");
   var nextVNode = render2.call(vm);
   var el2 = createElm(nextVNode);
   document.body.appendChild(el1); //以往都是直接替换掉整个元素
