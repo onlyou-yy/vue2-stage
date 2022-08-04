@@ -1,10 +1,30 @@
 import { isSameVnode } from ".";
 
+
+/**创建组件真实DOM */
+function createComponent(vnode){
+  let i = vnode.data;
+  if((i = i.hook) && (i = i.init)){
+    i(vnode);//初始化组件，找到init方法
+  }
+  if(vnode.componentInstance){
+    return true;
+  }
+}
+
 /**创建真实DOM */
 export function createElm(vnode){
   let {tag,data,children,text} = vnode;
   if(typeof tag === 'string'){
     //标签
+
+    // 区分是组件还是元素
+    if(createComponent(vnode)){//组件
+      //在调用 createComponent-> vnode.data.hook.init 之后
+      // 创建了组件的真实dom，在实例上就有 $el 保存着组件的DOM
+      return vnode.componentInstance.$el;
+    }
+
     //将真实DOM挂载到虚拟DOM上，方便后续修改属性
     vnode.el = document.createElement(tag);
     // 设置属性
@@ -50,7 +70,11 @@ export function patchProps(el,oldProps = {},props = {}){
 
 /**初始化和更新DOM */
 export function patch(oldVNode,vnode){
-  console.log(vnode);
+  if(!oldVNode){
+    //组件挂载
+    //创建元素之后在实例vm上就有$el了
+    return createElm(vnode);
+  }
   //真实DOM中才有nodeType
   const isRealElement = oldVNode.nodeType;
   if(isRealElement){

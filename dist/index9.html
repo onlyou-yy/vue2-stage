@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+</head>
+<body>
+  <div id="app" style="background-color:yellow;">
+    <span>
+      <a href="">{{firstName}}</a>
+    </span>
+  </div>
+  <script src="./vue.js"></script>
+  <script>
+    var vm = new Vue({
+      el:"#app",
+      data:{
+        firstName:'hello',
+        secondName:'world',
+        age:12,
+      }
+    });
+    setTimeout(() => {
+      vm.firstName = "dddd"
+    }, 2000);
+  </script>
+</body>
+</html>

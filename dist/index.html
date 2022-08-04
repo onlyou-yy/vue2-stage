@@ -8,17 +8,58 @@
 </head>
 <body>
   <div id="app" style="background-color:yellow;">
+    <my-button1></my-button1>
+    <my-button2></my-button2>
+    <my-button3></my-button3>
+    <my-button4></my-button4>
   </div>
   <script src="./vue.js"></script>
   <script>
-    var vm = new Vue({
-      el:"#app",
-      data:{
-        firstName:'hello',
-        secondName:'world',
-        age:12,
+    //组件的三大特性：自定义标签，组件里面有自己的属性和事件，组件的插槽
+    //（其实在浏览器中也是支持自定义标签的，在浏览器中是 webcomponent，不过兼容性不好）
+
+    // 在vue中可以通过 Vue.component() 方法定义组件，这样定义之后就可以在全局中使用
+    // Vue.component('my-button1',{
+    //   template:'<button>click me1</button>'
+    // })
+    // Vue.component('my-button2',Vue.extend({
+    //   template:'<button>click me2</button>'
+    // }))
+
+    // 其实在vue中还可以通过 ,Vue.extend 创建组件，然后挂载到指定位置上
+
+    // let Sub = Vue.extend({
+    //   template:'<button>click me5</button>'
+    // })
+    // new Sub().$mount("#app");
+
+    Vue.component('my-button',{
+      template:'<button>全部button</button>'
+    })
+    // 在模版渲染的时候需要查找 my-button 组件
+    // 然后将这个组件生产 ast -> vnode -> 渲染 -> 替换节点
+    let Sub = Vue.extend({
+      template:'<div>click me5 <my-button></my-button></div>',
+      components:{
+        'my-button':{template:'<button>自己button</button>'}
       }
-    });
+    })
+    new Sub().$mount("#app");
+
+    //根实例
+    // var vm = new Vue({
+    //   el:"#app",
+    //   data:{},
+    //   //定义局部组件
+    //   component:{
+    //     'my-button3':{
+    //       template:'<button>click me3</button>'
+    //     },
+    //     'my-button4':Vue.extend({
+    //       template:'<button>click me4</button>'
+    //     }),
+    //   }
+    // });
   </script>
 </body>
 </html>

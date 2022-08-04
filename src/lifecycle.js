@@ -7,8 +7,17 @@ export function initLifeCycle(Vue){
   Vue.prototype._update = function(vnode){
     const vm = this;
     const el = vm.$el;
-    //patch 既有初始化的功能，又有更新的方法
-    vm.$el = patch(el,vnode);
+    
+    let preVnode = vm._vnode;//取出上次渲染的虚拟节点
+    vm._vnode = vnode;//保存当前渲染的虚拟节点
+    if(preVnode){
+      //如果有上次渲染的虚拟节点，就进行diff对比
+      vm.$el = patch(preVnode,vnode);
+    }else{
+      //如果上次没有没有渲染，表示第一次渲染，进行初始化，将vnode转成真实dom挂载到el上
+      //patch 既有初始化的功能，又有更新的方法
+      vm.$el = patch(el,vnode);
+    }
   }
   /**生成虚拟节点 */
   Vue.prototype._c = function(){

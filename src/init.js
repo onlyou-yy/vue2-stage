@@ -12,7 +12,8 @@ export function initMixin(Vue){
     //将 options 挂载到 实例的 $options 上方便后续方法的访问
     const vm = this;
     //合并选项并赋值,定义的全局过滤器，指令等都会挂载上去
-    // this 指向Vue实例，在实例上没有constructor，但是会在原型链上查找
+    //在使用Vue创建组件的时候 this 指向Vue实例，
+    //在实例上没有constructor，但是会在原型链上查找
     vm.$options = mergeOptions(this.constructor.options,options);
     
     // 调用生命周期函数
@@ -39,11 +40,9 @@ export function initMixin(Vue){
       if(!opts.template && el){
         template = el.outerHTML;
       }else{
-        if(el){//如果有el则采用模版内容
-          template = opts.template;
-        }
+        template = opts.template;
       }
-      if(template){
+      if(template){//只要有模版就挂载
         //这里需要对模版进行编译
         const render = compileToFunction(template);
         opts.render = render;// jsx 最终会被编译成 h('xxx')

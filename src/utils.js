@@ -36,6 +36,7 @@ const LIFECYCLE = [
   'beforeDestroy',
   'destroyed',
 ];
+//生命周期函数的合并策略
 LIFECYCLE.forEach(hook => {
   strats[hook] = function(p,c){
     // 第一次合并：{} + {created:fn} => {created:[fn]}
@@ -56,3 +57,17 @@ LIFECYCLE.forEach(hook => {
     }
   }
 })
+
+//组件的合并策略
+strats.components = function(parentVal,childVal){
+  let res = Object.create(parentVal);
+  if(childVal){
+    for(let key in childVal){
+      //返回的是构造的对象，可以拿到父亲原型上的属性
+      //并将儿子的都拷贝到自己身上
+      res[key] = childVal[key];
+    }
+  }
+  console.log(res);
+  return res;
+}
