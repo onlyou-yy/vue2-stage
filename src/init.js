@@ -21,7 +21,7 @@ export function initMixin(Vue){
     // 初始化状态，计算属性，watch
     initState(vm);
     // 调用生命周期函数
-    callHook(vm,"beforeCreate");
+    callHook(vm,"created");
 
     // 实现数据的挂载
     if(options.el){
